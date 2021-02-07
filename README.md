@@ -33,7 +33,7 @@ You can also install these packages using pip3, but then you have to update them
 ```
 pysendpgp.py [-h] [-d] [-v] -r SENDER -s SUBJECT [-V] recipients
 
-Script description
+Send PGP encrypted emails with Gmail. Pipe the body of the email via stdin.
 
 positional arguments:
   recipients            list of email recipients separated by spaces
