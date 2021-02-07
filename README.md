@@ -24,7 +24,7 @@ https://myaccount.google.com/permissions?pli=1
   * ```gpg -K``` Display all private keys in your keyring.
 
 #### Optional
-- In order for others to find your public PGP key more easily, you may **upload the public key to** https://keys.openpgpg.org .
+- In order for others to find your public PGP key more easily, you may **upload the public key to** https://keys.openpgp.org .
 - If you have a **German eID**, you may [sign your public key with your eID card](https://pgp.governikus.de/pgp/). This will prove that the public PGP key really belongs to you.
 
 ## Prerequisites (Ubuntu 20.04 packages)
