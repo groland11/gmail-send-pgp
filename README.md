@@ -11,7 +11,16 @@ Oauth is a common standard for logging in to one internet service while using a 
 https://myaccount.google.com/permissions?pli=1
 
 ## PGP
-TODO
+- First you need your own **public and private PGP key pair**. There is an addon for Google Chrome called **[FlowCrypt](https://flowcrypt.com)** that lets you easily create your own PGP keypair. It also lets you send and receive signed and encrypted emails from within the Gmail web interface. Of course it lets you also use a PGP key pair that you created locally on your computer.
+- Next you need to download your new public and private key and **import them into your GnuPG keyring**:
+  * ```gpg --import yourcertificate.asc``` 
+  * ```gpg --import yourkey.asc```
+- The key will be used to **encrypt outgoing messages**.
+- For any **recipient** you also need to import their public key into your keyring:
+  * ```gpg --import recipient.asc```
+- Make sure that the **sender and recipient email addresses** match the email addresses in your keyring:
+  * ```gpg -k``` Displays all public keys in your keyring.
+  * ```gpg -K``` Display all private keys in your keyring.
 
 ## Prerequisites (Ubuntu 20.04 packages)
 - python3-googleapi
@@ -20,7 +29,7 @@ TODO
 You can also install these packages using pip3, but then you have to update them manually.
 
 ## Steps to take for oauth authentication
-- Go to https://developers.google.com/gmail/api/quickstart/python and click on the **"Enable the Gmail API"** button
+- Go to https://developers.google.com/gmail/api/quickstart/python and click on the **"Enable the Gmail API"** button.
 - Follow the steps and download the file as **"credentials.json"** into the script directory. Among other data, the file contains most importantly the client id, the redirect uri, and the secret to encrypt further communication with the Google authentication service (take a look at the oauth workflow for further details).
 - Run the script in a **local console** or over an SSH connection with X11 forwarding enabled (see usage below).
 - If you run the script for the **first time**, it will open your default web browser where you have to login to your Gmail account and grant access rights to the script.
@@ -53,4 +62,11 @@ optional arguments:
 Send the contents of an HTML file:
 ```
 cat message.html | ./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
+```
+Interactively type the body of your email:
+```
+./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
+This is the body of my email.
+Nice, it works.
+<CTRL+D>
 ```
