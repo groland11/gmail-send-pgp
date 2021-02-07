@@ -10,6 +10,7 @@ import sys
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
+from email.header import Header
 
 from googleapiclient.discovery import build, Resource
 from oauth2client.client import flow_from_clientsecrets, Credentials
@@ -91,7 +92,7 @@ def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, r
     message = MIMEText(body)
     message['to'] = ",".join(recipients)
     message['from'] = sender
-    message['subject'] = subject
+    message['subject'] = Header(subject, 'utf-8')
     raw_message = base64.urlsafe_b64encode(message.as_string().encode('utf-8'))
     body = {'raw': raw_message.decode("utf-8")}
 
