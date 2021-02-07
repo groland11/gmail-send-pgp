@@ -25,7 +25,8 @@ class LogFilter(logging.Filter):
 
 def parseargs():
     """Process command line arguments"""
-    parser = argparse.ArgumentParser(description="Script description")
+    parser = argparse.ArgumentParser(description="""
+    Send PGP encrypted emails with Gmail. Pipe the body of the email via stdin.""")
     parser.add_argument("-d", "--debug", action="store_true",
                         help="generate additional debug information")
     parser.add_argument("-v", "--verbose", action="store_true",
@@ -35,7 +36,7 @@ def parseargs():
     parser.add_argument("-s", "--subject", type=str, required=True,
                         help="email subject")
     parser.add_argument("recipients", type=str, action="append",
-                        help="list of email recipients")
+                        help="list of email recipients separated by spaces")
     parser.add_argument("-V", "--version", action="version", version="1.0.0")
     return parser.parse_args()
 
@@ -87,9 +88,7 @@ def gmail_connect() -> Resource:
     return gmail_service
 
 
-def gmail_send(gmail_resource: Resource, subject: str, sender: str, recipients: list):
-    body = "This is a test."
-
+def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list):
     message = MIMEText(body)
     message['to'] = ",".join(recipients)
     message['from'] = sender
@@ -106,13 +105,19 @@ def main():
     args = parseargs()
     logger = get_logger(args.debug)
 
+    # Read email body from stdin
+    file_handle = sys.stdin
+    body = file_handle.read()
+
     gmail_resource = gmail_connect()
 
     try:
-        message = gmail_send(gmail_resource, subject=args.subject, sender=args.sender, recipients=args.recipients)
+        message = gmail_send(gmail_resource, subject=args.subject, body=body,
+                             sender=args.sender, recipients=args.recipients)
         logger.debug(f"Ok: MessageID={message['id']}")
     except Exception as e:
         print(f"Error sending message: {e}")
+        exit(1)
 
 
 if __name__ == '__main__':

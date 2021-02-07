@@ -31,7 +31,7 @@ You can also install these packages using pip3, but then you have to update them
 
 ## Usage
 ```
-pysendpgp.py [-h] [-d] [-v] -r SENDER -s SUBJECT [-V] recipients
+gmailsendpgp.py [-h] [-d] [-v] -r SENDER -s SUBJECT [-V] recipients
 
 Send PGP encrypted emails with Gmail. Pipe the body of the email via stdin.
 
@@ -50,4 +50,7 @@ optional arguments:
 ```
 
 ## Examples
-
+Send the contents of an HTML file:
+```
+cat message.html | ./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
+```
