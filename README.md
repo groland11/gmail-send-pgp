@@ -1,5 +1,5 @@
 # gmail-send-pgp
-Send PGP encrypted emails on the commandline with Gmail
+Send PGP encrypted emails on the Linux command line with Gmail
 
 ## Oauth and Google API
 This script uses **oauth** to authenticate against your Gmail account, and then uses the [Google API](https://developers.google.com/gmail/api/reference/rest "Gmail API Reference") to connect to your Gmail inbox. In order to use or modify this script, you should have a basic understanding of how oauth works.
@@ -11,16 +11,21 @@ Oauth is a common standard for logging in to one internet service while using a 
 https://myaccount.google.com/permissions?pli=1
 
 ## PGP
-- First you need your own **public and private PGP key pair**. There is an addon for Google Chrome called **[FlowCrypt](https://flowcrypt.com)** that lets you easily create your own PGP keypair. It also lets you send and receive signed and encrypted emails from within the Gmail web interface. Of course it lets you also use a PGP key pair that you created locally on your computer.
+- First you need to create your own **public and private PGP key pair**. There is an addon for Google Chrome called **[FlowCrypt](https://flowcrypt.com)** that lets you easily create your own PGP key pair. It also lets you send and receive signed and encrypted emails from within the Gmail web interface. Of course you can also use a PGP key pair that you created locally on your computer.
 - Next you need to download your new public and private key and **import them into your GnuPG keyring**:
   * ```gpg --import yourcertificate.asc``` 
   * ```gpg --import yourkey.asc```
-- The key will be used to **encrypt outgoing messages**.
+- Your PGP private key will be used to **sign outgoing messages**.
 - For any **recipient** you also need to import their public key into your keyring:
   * ```gpg --import recipient.asc```
+- The recipient's PGP public key will be used to **encrypt outgoing messages**.  
 - Make sure that the **sender and recipient email addresses** match the email addresses in your keyring:
   * ```gpg -k``` Displays all public keys in your keyring.
   * ```gpg -K``` Display all private keys in your keyring.
+
+#### Optional
+- In order for others to find your public PGP key more easily, you may **upload the public key to** https://keys.openpgpg.org .
+- If you have a **German eID**, you may [sign your public key with your eID card](https://pgp.governikus.de/pgp/). This will prove that the public PGP key really belongs to you.
 
 ## Prerequisites (Ubuntu 20.04 packages)
 - python3-googleapi
