@@ -5,7 +5,6 @@ import base64
 import datetime
 import httplib2
 import logging
-import smtplib, ssl
 import sys
 
 from email.mime.text import MIMEText
