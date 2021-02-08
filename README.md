@@ -10,6 +10,16 @@ OAuth is a common standard for logging in to one internet service while using a 
 
 https://myaccount.google.com/permissions?pli=1
 
+## Steps to take for OAuth authentication
+- Go to https://developers.google.com/gmail/api/quickstart/python and click on the **"Enable the Gmail API"** button.
+- Follow the steps and download the file as **"credentials.json"** into the script directory. Among other data, the file contains most importantly the client id, the redirect uri, and the secret to encrypt further communication with the Google authentication service (take a look at the OAuth workflow for further details).
+- Run the script in a **local console** or over an SSH connection with X11 forwarding enabled (see usage below).
+- If you run the script for the **first time**, it will open your default web browser where you have to login to your Gmail account and grant access rights to the script.
+- In the background, the script will receive an authentication code used to access your Gmail account (access token). The token along with some other required data will be stored as **"gmail.storage"** in the script directory.
+- For any subsequent runs, the script will reuse the already existing **access token** stored in "gmail.storage".
+- Once the access token expires, the script will automatically request and store a new access token using the **refresh token** which is also stored in "gmail.storage".
+- When the **[refresh token expires](https://developers.google.com/identity/protocols/oauth2#expiration)** (if you change your password or if you haven't used the refresh token for more then 6 months), you have to repeat these steps.
+
 ## PGP
 - First you need to create your own **public and private PGP key pair**. There is an addon for Google Chrome called **[FlowCrypt](https://flowcrypt.com)** that lets you easily create your own PGP key pair. It also lets you send and receive signed and encrypted emails from within the Gmail web interface. Of course you can also use a PGP key pair that you created locally on your computer.
 - Next you need to download your new public and private key and **import them into your GnuPG keyring**:
@@ -39,16 +49,6 @@ https://myaccount.google.com/permissions?pli=1
 - python3-gpg
 
 You can also install these packages using pip3, but then you have to update them manually whenever there is a bugfix or security patch.
-
-## Steps to take for OAuth authentication
-- Go to https://developers.google.com/gmail/api/quickstart/python and click on the **"Enable the Gmail API"** button.
-- Follow the steps and download the file as **"credentials.json"** into the script directory. Among other data, the file contains most importantly the client id, the redirect uri, and the secret to encrypt further communication with the Google authentication service (take a look at the OAuth workflow for further details).
-- Run the script in a **local console** or over an SSH connection with X11 forwarding enabled (see usage below).
-- If you run the script for the **first time**, it will open your default web browser where you have to login to your Gmail account and grant access rights to the script.
-- In the background, the script will receive an authentication code used to access your Gmail account (access token). The token along with some other required data will be stored as **"gmail.storage"** in the script directory.
-- For any subsequent runs, the script will reuse the already existing **access token** stored in "gmail.storage".
-- Once the access token expires, the script will automatically request and store a new access token using the **refresh token** which is also stored in "gmail.storage".
-- When the **[refresh token expires](https://developers.google.com/identity/protocols/oauth2#expiration)** (if you change your password or if you haven't used the refresh token for more then 6 months), you have to repeat these steps.
 
 ## Usage
 ```
