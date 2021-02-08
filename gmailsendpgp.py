@@ -3,12 +3,13 @@
 import argparse
 import base64
 import datetime
+import gnupg
 import httplib2
 import logging
 import sys
 
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
 
@@ -62,6 +63,21 @@ def get_logger(debug: bool = False) -> logging.Logger:
     return logger
 
 
+def get_signature(cleartext: str) -> Message:
+    gpg = gnupg.GPG()
+    message = Message()
+
+    # Private key is automatically selected by GnuPG
+    # Password for private key has to be provided by a running gpg agent
+    signature = str(gpg.sign(cleartext, detach=True))
+
+    message['Content-Type'] = 'application/pgp-signature; name="signature.asc"'
+    message['Content-Description'] = 'OpenPGP digital signature'
+    message.set_payload(signature)
+
+    return message
+
+
 def gmail_connect() -> Resource:
     # Credentials file retrieved from developer console https://developers.google.com/gmail/api/quickstart/python
     secret_file = "credentials.json"
@@ -89,11 +105,19 @@ def gmail_connect() -> Resource:
 
 
 def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list):
-    message = MIMEText(body)
-    message['to'] = ",".join(recipients)
-    message['from'] = sender
-    message['subject'] = Header(subject, 'utf-8')
-    raw_message = base64.urlsafe_b64encode(message.as_string().encode('utf-8'))
+    # MIME type/subtype is "text/plain", charset is automatically detected ("us-ascii" or "utf-8")
+    msg_text = MIMEText(body)
+    msg_sign = get_signature(msg_text.as_string().replace('\n', '\r\n'))
+T
+    msg = MIMEMultipart(_subtype="signed", micalg="pgp-sha512",
+                        protocol="application/pgp-signature")
+    msg['To'] = ",".join(recipients)
+    msg['From'] = sender
+    msg['Subject'] = Header(subject, 'utf-8') # Enable utf-8 characters in email subject
+    msg.attach(msg_text)
+    msg.attach(msg_sign)
+
+    raw_message = base64.urlsafe_b64encode(msg.as_string().encode('utf-8'))
     body = {'raw': raw_message.decode("utf-8")}
 
     # The special value "me" for userId indicates the email address of the current user
