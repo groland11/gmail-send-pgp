@@ -1,5 +1,5 @@
 # gmail-send-pgp
-Send PGP encrypted emails on the Linux command line with Gmail
+Send PGP signed and encrypted emails on the Linux command line with Gmail
 
 ## OAuth and Google API
 This script uses **OAuth 2.0** to authenticate against your Gmail account, and then uses the [Google API](https://developers.google.com/gmail/api/reference/rest "Gmail API Reference") to connect to your Gmail inbox. In order to use or modify this script, you should have a [basic understanding of how OAuth works](https://developers.google.com/identity/protocols/oauth2).
@@ -22,6 +22,12 @@ https://myaccount.google.com/permissions?pli=1
 - Make sure that the **sender and recipient email addresses** match the email addresses in your keyring:
   * ```gpg -k``` Displays all public keys in your keyring.
   * ```gpg -K``` Display all private keys in your keyring.
+
+#### Notes
+- Make sure you have configured the right **password input method** on your terminal. You need to input a password to unlock your private PGP key for message signing.
+  * On Ubuntu: ```sudo update-alternatives --config pinentry```
+- If you have trouble typing in your password over **remote connections** (e.g. SSH), try this first before you run the script:
+  * ```export GPG_TTY=$(tty)```
 
 #### Optional
 - In order for others to find your public PGP key more easily, you may **upload the public key to** https://keys.openpgp.org .

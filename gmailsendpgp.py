@@ -27,7 +27,7 @@ class LogFilter(logging.Filter):
 def parseargs():
     """Process command line arguments"""
     parser = argparse.ArgumentParser(description="""
-    Send PGP encrypted emails with Gmail. Pipe the body of the email via stdin.""")
+    Send PGP signed and encrypted emails with Gmail. Pipe the body of the email via stdin.""")
     parser.add_argument("-d", "--debug", action="store_true",
                         help="generate additional debug information")
     parser.add_argument("-v", "--verbose", action="store_true",
