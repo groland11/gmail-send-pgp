@@ -108,7 +108,7 @@ def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, r
     # MIME type/subtype is "text/plain", charset is automatically detected ("us-ascii" or "utf-8")
     msg_text = MIMEText(body)
     msg_sign = get_signature(msg_text.as_string().replace('\n', '\r\n'))
-T
+
     msg = MIMEMultipart(_subtype="signed", micalg="pgp-sha512",
                         protocol="application/pgp-signature")
     msg['To'] = ",".join(recipients)
