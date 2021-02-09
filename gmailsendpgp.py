@@ -8,10 +8,12 @@ import httplib2
 import logging
 import sys
 
-from email.mime.text import MIMEText
-from email.message import Message
-from email.mime.multipart import MIMEMultipart
 from email.header import Header
+from email.message import Message
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email import encoders
 
 from googleapiclient.discovery import build, Resource
 from oauth2client.client import flow_from_clientsecrets, Credentials
@@ -32,6 +34,8 @@ def parseargs():
                         help="generate additional debug information")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
+    parser.add_argument("-p", "--pgp", action="store_true",
+                        help="sign and encrypt email with gnupg")
     parser.add_argument("-r", "--sender", type=str, required=True,
                         help="email sender")
     parser.add_argument("-s", "--subject", type=str, required=True,
@@ -78,6 +82,19 @@ def get_signature(cleartext: str) -> Message:
     return message
 
 
+def get_encrypted(msgtext: str, recipient: str):
+    gpg = gnupg.GPG()
+
+    encrypted = gpg.encrypt(msgtext, recipient, always_trust=True)
+    if not encrypted.ok:
+        # encrypted.status
+        # encrypted.stderr
+        # TODO: Raise RuntimeException
+        return None
+
+    return str(encrypted)
+
+
 def gmail_connect() -> Resource:
     # Credentials file retrieved from developer console https://developers.google.com/gmail/api/quickstart/python
     secret_file = "credentials.json"
@@ -104,25 +121,51 @@ def gmail_connect() -> Resource:
     return gmail_service
 
 
-def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list):
+def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list,
+               sign_encrypt: bool=False):
+    status_text = ""
+    gmail_result = {}
+
     # MIME type/subtype is "text/plain", charset is automatically detected ("us-ascii" or "utf-8")
     msg_text = MIMEText(body)
     msg_sign = get_signature(msg_text.as_string().replace('\n', '\r\n'))
 
     msg = MIMEMultipart(_subtype="signed", micalg="pgp-sha512",
                         protocol="application/pgp-signature")
+    msg.attach(msg_text)
+    msg.attach(msg_sign)
+
+    if sign_encrypt:
+        try:
+            encrypted = get_encrypted(body, recipients[0])
+        except RuntimeError as e:
+            status_text = str(e)
+        else:
+            """
+            msg = MIMEMultipart(_subtype="encrypted", protocol="application/pgp-encrypted")
+            msg_desc = MIMEApplication(_data="Version: 1\n", _subtype="pgp-encrypted",
+                                       _encoder=encoders.encode_noop)
+            msg_desc.add_header("Content-Description", "PGP/MIME version identification")
+            msg_enc = MIMEApplication(_data=encrypted, _subtype='octet-stream; name="encrypted.asc"',
+                                      _encoder=encoders.encode_noop)
+            msg_enc.add_header("Content-Description", "OpenPGP encrypted message")
+            msg_enc.add_header("Content-Disposition", 'inline; filename="encrypted.asc"')
+            msg.attach(msg_desc)
+            msg.attach(msg_enc)
+            """
+            msg = MIMEText(encrypted)
+
     msg['To'] = ",".join(recipients)
     msg['From'] = sender
     msg['Subject'] = Header(subject, 'utf-8') # Enable utf-8 characters in email subject
-    msg.attach(msg_text)
-    msg.attach(msg_sign)
 
     raw_message = base64.urlsafe_b64encode(msg.as_string().encode('utf-8'))
     body = {'raw': raw_message.decode("utf-8")}
 
     # The special value "me" for userId indicates the email address of the current user
-    return gmail_resource.users().messages().send(userId="me", body=body).execute()
+    gmail_result = gmail_resource.users().messages().send(userId="me", body=body).execute()
 
+    return (status_text, gmail_result)
 
 def main():
     """Main program flow"""
@@ -136,9 +179,10 @@ def main():
     gmail_resource = gmail_connect()
 
     try:
-        message = gmail_send(gmail_resource, subject=args.subject, body=body,
-                             sender=args.sender, recipients=args.recipients)
-        logger.debug(f"Ok: MessageID={message['id']}")
+        (status, result) = gmail_send(gmail_resource, subject=args.subject, body=body,
+                             sender=args.sender, recipients=args.recipients,
+                             sign_encrypt=args.pgp)
+        logger.debug(f"MessageID={result.get('id')}, {status}")
     except Exception as e:
         print(f"Error sending message: {e}")
         exit(1)
