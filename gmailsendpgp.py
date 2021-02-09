@@ -11,6 +11,7 @@ import sys
 from email.header import Header
 from email.message import Message
 from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import encoders
@@ -35,7 +36,7 @@ def parseargs():
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
     parser.add_argument("-p", "--pgp", action="store_true",
-                        help="sign and encrypt email with gnupg")
+                        help="encrypt email with GnuPG")
     parser.add_argument("-r", "--sender", type=str, required=True,
                         help="email sender")
     parser.add_argument("-s", "--subject", type=str, required=True,
@@ -67,7 +68,7 @@ def get_logger(debug: bool = False) -> logging.Logger:
     return logger
 
 
-def get_signature(cleartext: str) -> Message:
+def get_signature(cleartext: str) -> MIMEApplication:
     # Private key is automatically selected by GnuPG
     # Password for private key has to be provided by a running gpg agent
     gpg = gnupg.GPG()
@@ -82,17 +83,34 @@ def get_signature(cleartext: str) -> Message:
     return message
 
 
-def get_encrypted(msgtext: str, recipient: str):
+def get_encrypted(msgtext: str, recipient: str) -> MIMEBase:
+    # Public key is automatically selected by GnuPG based on recipient address
+    # always_trust=True means that trust level of recipient's public key is ignored
     gpg = gnupg.GPG()
-
     encrypted = gpg.encrypt(msgtext, recipient, always_trust=True)
-    if not encrypted.ok:
-        # encrypted.status
-        # encrypted.stderr
-        # TODO: Raise RuntimeException
-        return None
 
-    return str(encrypted)
+    if not encrypted.ok:
+        # Most common reason: recipient certificate was not found in gnupg keyring
+        raise RuntimeError(f"Error encrypting message to {recipient}: {encrypted.status}, {encrypted.stderr}")
+
+    if False:
+        # PGP/MIME encrypted message as described by https://de.wikipedia.org/wiki/PGP/MIME
+        # Somehow it is not working, probably because Gmail iw rewriting the MIME parts ...
+        message = MIMEMultipart(_subtype="encrypted", protocol="application/pgp-encrypted")
+        msg_desc = MIMEApplication(_data="Version: 1\n", _subtype="pgp-encrypted",
+                                   _encoder=encoders.encode_noop)
+        msg_desc.add_header("Content-Description", "PGP/MIME version identification")
+        msg_enc = MIMEApplication(_data=encrypted, _subtype='octet-stream; name="encrypted.asc"',
+                                  _encoder=encoders.encode_noop)
+        msg_enc.add_header("Content-Description", "OpenPGP encrypted message")
+        msg_enc.add_header("Content-Disposition", 'inline; filename="encrypted.asc"')
+        message.attach(msg_desc)
+        message.attach(msg_enc)
+    else:
+        # ... so this is the next best thing which is currently working with Gmail
+        message = MIMEText(str(encrypted))
+
+    return message
 
 
 def gmail_connect() -> Resource:
@@ -121,49 +139,31 @@ def gmail_connect() -> Resource:
     return gmail_service
 
 
-def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list,
-               encrypt: bool=False):
+def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipient: str,
+               encrypt: bool=False) -> tuple:
     """
     TODO:
     - PGP signature is currently not working
-    - PGP/MIME encryption is not working as expected (s. comments below)
+    - PGP/MIME encryption is not working as expected (s. comments in function get_encrypted)
     """
     status_text = ""
     gmail_result = {}
 
-    # MIME type/subtype is "text/plain", charset is automatically detected ("us-ascii" or "utf-8")
-    msg_text = MIMEText(body)
-    msg_sign = get_signature(msg_text.as_string().replace('\n', '\r\n'))
-
-    msg = MIMEMultipart(_subtype="signed", micalg="pgp-sha512",
-                        protocol="application/pgp-signature")
-    msg.attach(msg_text)
-    msg.attach(msg_sign)
-
     if encrypt:
-        try:
-            encrypted = get_encrypted(body, recipients[0])
-        except RuntimeError as e:
-            status_text = str(e)
-        else:
-            if False:
-                # PGP/MIME encrypted message as described by https://de.wikipedia.org/wiki/PGP/MIME
-                # Somehow it is not working, probably because Gmail iw rewriting the MIME parts ...
-                msg = MIMEMultipart(_subtype="encrypted", protocol="application/pgp-encrypted")
-                msg_desc = MIMEApplication(_data="Version: 1\n", _subtype="pgp-encrypted",
-                                           _encoder=encoders.encode_noop)
-                msg_desc.add_header("Content-Description", "PGP/MIME version identification")
-                msg_enc = MIMEApplication(_data=encrypted, _subtype='octet-stream; name="encrypted.asc"',
-                                          _encoder=encoders.encode_noop)
-                msg_enc.add_header("Content-Description", "OpenPGP encrypted message")
-                msg_enc.add_header("Content-Disposition", 'inline; filename="encrypted.asc"')
-                msg.attach(msg_desc)
-                msg.attach(msg_enc)
-            else:
-                # ... so this is the next best thing which is currently working with Gmail
-                msg = MIMEText(encrypted)
+        # Encrypt message
+        msg = get_encrypted(body, recipient)
+    else:
+        # Sign message
+        msg = MIMEMultipart(_subtype="signed", micalg="pgp-sha512",
+                            protocol="application/pgp-signature")
+        # MIME type/subtype for message body is "text/plain", charset is automatically detected ("us-ascii" or "utf-8")
+        msg_text = MIMEText(body)
+        msg_sign = get_signature(msg_text.as_string().replace('\n', '\r\n'))
 
-    msg['To'] = ",".join(recipients)
+        msg.attach(msg_text)
+        msg.attach(msg_sign)
+
+    msg['To'] = recipient
     msg['From'] = sender
     msg['Subject'] = Header(subject, 'utf-8') # Enable utf-8 characters in email subject
     #print(msg.as_string())
@@ -177,6 +177,7 @@ def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, r
 
     return (status_text, gmail_result)
 
+
 def main():
     """Main program flow"""
     args = parseargs()
@@ -186,15 +187,22 @@ def main():
     file_handle = sys.stdin
     body = file_handle.read()
 
-    gmail_resource = gmail_connect()
+    try:
+        # Connect to Gmail API and authenticate with OAuth
+        gmail_resource = gmail_connect()
+    except Exception as e:
+        logger.error(f"Error connecting to Gmail server: {e}")
+        exit(1)
 
     try:
-        (status, result) = gmail_send(gmail_resource, subject=args.subject, body=body,
-                             sender=args.sender, recipients=args.recipients,
-                             encrypt=args.pgp)
-        logger.debug(f"MessageID={result.get('id')}, {status}")
+        for recipient in args.recipients:
+            # Send email via Gmail API
+            (status, result) = gmail_send(gmail_resource, subject=args.subject, body=body,
+                                          sender=args.sender, recipient=recipient,
+                                          encrypt=args.pgp)
+            logger.debug(f"Recipient: {recipient}, MessageID={result.get('id')}, {status}")
     except Exception as e:
-        print(f"Error sending message: {e}")
+        logger.error(f"Error sending message: {e}")
         exit(1)
 
 
