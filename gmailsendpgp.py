@@ -68,16 +68,16 @@ def get_logger(debug: bool = False) -> logging.Logger:
 
 
 def get_signature(cleartext: str) -> Message:
-    gpg = gnupg.GPG()
-    message = Message()
-
     # Private key is automatically selected by GnuPG
     # Password for private key has to be provided by a running gpg agent
+    gpg = gnupg.GPG()
     signature = str(gpg.sign(cleartext, detach=True))
 
-    message['Content-Type'] = 'application/pgp-signature; name="signature.asc"'
-    message['Content-Description'] = 'OpenPGP digital signature'
-    message.set_payload(signature)
+    message = MIMEApplication(signature, _subtype='pgp-signature; name="signature.asc',
+                              _encoder=encoders.encode_noop)
+    message.add_header("Content-Description", "OpenPGP digital signature")
+    message.add_header("Content-Disposition", 'attachment; filename="signature.asc"')
+    message.add_header("Content-Transfer-Encoding", "7bit")
 
     return message
 
@@ -122,7 +122,7 @@ def gmail_connect() -> Resource:
 
 
 def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, recipients: list,
-               sign_encrypt: bool=False):
+               encrypt: bool=False):
     """
     TODO:
     - PGP signature is currently not working
@@ -140,7 +140,7 @@ def gmail_send(gmail_resource: Resource, subject: str, body: str, sender: str, r
     msg.attach(msg_text)
     msg.attach(msg_sign)
 
-    if sign_encrypt:
+    if encrypt:
         try:
             encrypted = get_encrypted(body, recipients[0])
         except RuntimeError as e:
@@ -191,7 +191,7 @@ def main():
     try:
         (status, result) = gmail_send(gmail_resource, subject=args.subject, body=body,
                              sender=args.sender, recipients=args.recipients,
-                             sign_encrypt=args.pgp)
+                             encrypt=args.pgp)
         logger.debug(f"MessageID={result.get('id')}, {status}")
     except Exception as e:
         print(f"Error sending message: {e}")
