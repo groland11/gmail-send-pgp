@@ -71,11 +71,11 @@ optional arguments:
 ```
 
 ## Examples
-Send the contents of an HTML file:
+Send the contents of a text file:
 ```
-cat message.html | ./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
+cat message.txt | ./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
 ```
-Interactively type the body of your email:
+Interactively type the body of an email:
 ```
 ./gmailsendpgp.py -r myaccount@gmail.com -s "This is a test" test@example.com
 This is the body of my email.
