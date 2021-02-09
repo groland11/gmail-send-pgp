@@ -52,9 +52,9 @@ You can also install these packages using pip3, but then you have to update them
 
 ## Usage
 ```
-gmailsendpgp.py [-h] [-d] [-v] -r SENDER -s SUBJECT [-V] recipients
+gmailsendpgp.py [-h] [-d] [-v] [-p] -r SENDER -s SUBJECT [-V] recipients
 
-Send PGP encrypted emails with Gmail. Pipe the body of the email via stdin.
+Send PGP signed and encrypted emails with Gmail. Pipe the body of the email via stdin.
 
 positional arguments:
   recipients            list of email recipients separated by spaces
@@ -63,6 +63,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -d, --debug           generate additional debug information
   -v, --verbose         increase output verbosity
+  -p, --pgp             encrypt email with GnuPG
   -r SENDER, --sender SENDER
                         email sender
   -s SUBJECT, --subject SUBJECT
