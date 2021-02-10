@@ -195,7 +195,8 @@ def main():
         exit(1)
 
     try:
-        for recipient in args.recipients:
+        # Remove duplicates from recipient list before sending email to each recipient
+        for recipient in list(set(args.recipients)):
             # Send email via Gmail API
             (status, result) = gmail_send(gmail_resource, subject=args.subject, body=body,
                                           sender=args.sender, recipient=recipient,
